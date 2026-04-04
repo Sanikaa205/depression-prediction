@@ -1,0 +1,209 @@
+"""
+Pydantic Schema Models for Depression Severity Prediction API
+
+Defines request/response validators and database models.
+"""
+
+from pydantic import BaseModel, Field
+from typing import List, Dict, Optional
+from datetime import datetime
+
+
+class AnalyzeRequest(BaseModel):
+    """
+    Request body for /analyze endpoint.
+    
+    Attributes:
+        text (str): Input text for depression severity analysis
+                   Must be at least 10 characters
+    """
+    text: str = Field(
+        ...,
+        min_length=10,
+        max_length=10000,
+        description="Text to analyze for depression severity (10-10000 chars)",
+        example="I've been feeling really depressed and hopeless lately, unable to find joy in anything"
+    )
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "text": "I've been feeling really down and having trouble sleeping"
+            }
+        }
+
+
+class AnalyzeResponse(BaseModel):
+    """
+    Response body for /analyze endpoint.
+    
+    Includes database ID and full prediction results.
+    """
+    id: int = Field(
+        ...,
+        description="Database record ID",
+        example=1
+    )
+    text: str = Field(
+        ...,
+        description="Analyzed text",
+        example="I've been feeling really down"
+    )
+    severity: str = Field(
+        ...,
+        description="Predicted severity level",
+        example="Moderate"
+    )
+    risk_score: float = Field(
+        ...,
+        description="Risk score (0-100)",
+        example=65.43
+    )
+    confidence_score: float = Field(
+        ...,
+        description="Model confidence (0-100)",
+        example=89.12
+    )
+    suicidal_risk: bool = Field(
+        ...,
+        description="Suicidal ideation detected",
+        example=False
+    )
+    coping_suggestions: List[str] = Field(
+        ...,
+        description="Personalized coping suggestions",
+        example=[
+            "✓ Consider scheduling sessions with a counselor or therapist",
+            "✓ Practice mindfulness meditation (apps like Headspace, Calm)",
+            "✓ Strengthen social connections with friends and family",
+            "✓ Explore cognitive behavioral therapy (CBT) techniques online"
+        ]
+    )
+    probabilities: Dict[str, float] = Field(
+        ...,
+        description="Probability distribution across all classes",
+        example={
+            "Minimal": 0.05,
+            "Mild": 0.15,
+            "Moderate": 0.60,
+            "Severe": 0.20
+        }
+    )
+    created_at: Optional[datetime] = Field(
+        default=None,
+        description="Timestamp when analysis was saved"
+    )
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "id": 1,
+                "text": "I've been feeling really down",
+                "severity": "Moderate",
+                "risk_score": 65.43,
+                "confidence_score": 89.12,
+                "suicidal_risk": False,
+                "coping_suggestions": [
+                    "✓ Consider scheduling sessions with a counselor or therapist",
+                    "✓ Practice mindfulness meditation (apps like Headspace, Calm)"
+                ],
+                "probabilities": {
+                    "Minimal": 0.05,
+                    "Mild": 0.15,
+                    "Moderate": 0.60,
+                    "Severe": 0.20
+                }
+            }
+        }
+
+
+class HistoryItem(BaseModel):
+    """
+    Single analysis record from history.
+    
+    Used in /history endpoint response.
+    """
+    id: int = Field(..., description="Record ID", example=1)
+    text: str = Field(..., description="Analyzed text")
+    severity: str = Field(..., description="Predicted severity", example="Moderate")
+    risk_score: float = Field(..., description="Risk score", example=65.43)
+    confidence_score: float = Field(..., description="Confidence score", example=89.12)
+    suicidal_risk: bool = Field(..., description="Suicidal risk flag", example=False)
+    suggestions: List[str] = Field(..., description="Coping suggestions")
+    created_at: str = Field(..., description="ISO timestamp", example="2026-04-04T15:30:22")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "id": 1,
+                "text": "I've been feeling really down",
+                "severity": "Moderate",
+                "risk_score": 65.43,
+                "confidence_score": 89.12,
+                "suicidal_risk": False,
+                "suggestions": ["✓ Try counseling", "✓ Practice meditation"],
+                "created_at": "2026-04-04T15:30:22"
+            }
+        }
+
+
+class LatestResult(BaseModel):
+    """
+    Latest analysis result (summary).
+    
+    Used in /latest-result endpoint response.
+    """
+    id: int = Field(..., description="Record ID", example=1)
+    severity: str = Field(..., description="Predicted severity", example="Moderate")
+    risk_score: float = Field(..., description="Risk score (0-100)", example=65.43)
+    confidence_score: float = Field(..., description="Confidence score (0-100)", example=89.12)
+    created_at: str = Field(..., description="ISO timestamp")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "id": 1,
+                "severity": "Moderate",
+                "risk_score": 65.43,
+                "confidence_score": 89.12,
+                "created_at": "2026-04-04T15:30:22"
+            }
+        }
+
+
+class HealthResponse(BaseModel):
+    """
+    Health check response.
+    
+    Used in /health endpoint.
+    """
+    status: str = Field(..., description="API status", example="ok")
+    model_loaded: bool = Field(..., description="ML model loaded", example=True)
+    database_ready: bool = Field(..., description="Database initialized", example=True)
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "status": "ok",
+                "model_loaded": True,
+                "database_ready": True
+            }
+        }
+
+
+class ErrorResponse(BaseModel):
+    """
+    Standard error response.
+    
+    Used for 400, 422, 500 errors.
+    """
+    detail: str = Field(..., description="Error message")
+    error_code: Optional[str] = Field(None, description="Error code")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "detail": "Text must be at least 10 characters",
+                "error_code": "VALIDATION_ERROR"
+            }
+        }
