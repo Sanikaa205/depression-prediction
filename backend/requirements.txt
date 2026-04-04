@@ -1,0 +1,26 @@
+# FastAPI & Web Framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+
+# PyTorch & Deep Learning
+# CPU-only version - install from PyTorch index
+torch==2.2.0
+
+# Model & NLP
+transformers==4.36.2
+safetensors==0.4.1
+
+# Data Validation
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# Database
+aiosqlite==0.19.0
+
+# Utilities
+python-dotenv==1.0.0
+python-multipart==0.0.6
+
+# Optional: for model inference optimization
+numpy==1.24.3
+scipy==1.11.4
