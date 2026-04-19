@@ -207,3 +207,57 @@ class ErrorResponse(BaseModel):
                 "error_code": "VALIDATION_ERROR"
             }
         }
+
+
+# ===================== AUTHENTICATION MODELS =====================
+
+class SignupRequest(BaseModel):
+    """
+    User signup/registration request.
+    
+    Attributes:
+        username (str): Unique username (3-50 characters)
+        email (str): User email address
+        password (str): Password (minimum 6 characters)
+    """
+    username: str = Field(..., min_length=3, max_length=50, description="Username")
+    email: str = Field(..., description="Email address")
+    password: str = Field(..., min_length=6, description="Password (min 6 chars)")
+
+
+class LoginRequest(BaseModel):
+    """
+    User login request.
+    
+    Attributes:
+        username (str): Username
+        password (str): Password
+    """
+    username: str = Field(..., description="Username")
+    password: str = Field(..., description="Password")
+
+
+class UserResponse(BaseModel):
+    """
+    User response (no password included).
+    
+    Attributes:
+        id (str): User ID (MongoDB ObjectId as string)
+        username (str): Username
+        email (str): Email address
+    """
+    id: str = Field(..., description="User ID")
+    username: str = Field(..., description="Username")
+    email: str = Field(..., description="Email address")
+
+
+class AuthResponse(BaseModel):
+    """
+    Authentication response (signup/login).
+    
+    Attributes:
+        user (UserResponse): User data
+        message (str): Response message
+    """
+    user: UserResponse = Field(..., description="User data")
+    message: str = Field(..., description="Response message")

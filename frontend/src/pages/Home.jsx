@@ -1,6 +1,9 @@
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 export default function Home() {
+  const { isAuthenticated } = useAuth();
+  
   const scrollToSection = () => {
     const element = document.getElementById('features');
     if (element) {
@@ -74,12 +77,21 @@ export default function Home() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center w-full sm:w-auto animate-fade-in animation-delay-300">
-            <Link
-              to="/analyze"
-              className="w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl hover:shadow-violet-500/50 hover:scale-105"
-            >
-              Start Analysis
-            </Link>
+            {isAuthenticated ? (
+              <Link
+                to="/analyze"
+                className="w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl hover:shadow-violet-500/50 hover:scale-105"
+              >
+                Start Analysis
+              </Link>
+            ) : (
+              <Link
+                to="/signup"
+                className="w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl hover:shadow-violet-500/50 hover:scale-105"
+              >
+                Sign Up to Get Started
+              </Link>
+            )}
 
             <button
               onClick={scrollToSection}

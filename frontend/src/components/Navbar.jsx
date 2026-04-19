@@ -1,8 +1,11 @@
 import { useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { isAuthenticated, user, logout } = useAuth();
+  const navigate = useNavigate();
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -10,6 +13,12 @@ export default function Navbar() {
 
   const closeMenu = () => {
     setIsMenuOpen(false);
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+    closeMenu();
   };
 
   return (
@@ -39,47 +48,83 @@ export default function Navbar() {
               <span className="absolute bottom-0 left-0 w-0 group-hover:w-full h-0.5 bg-gradient-to-r from-violet-500 to-purple-500 transition-all duration-300"></span>
             </NavLink>
 
-            <NavLink
-              to="/analyze"
-              className={({ isActive }) =>
-                `px-4 py-2 text-sm font-medium transition-all duration-300 relative group ${
-                  isActive
-                    ? 'text-violet-400'
-                    : 'text-slate-300 hover:text-slate-100'
-                }`
-              }
-            >
-              Analyze
-              <span className="absolute bottom-0 left-0 w-0 group-hover:w-full h-0.5 bg-gradient-to-r from-violet-500 to-purple-500 transition-all duration-300"></span>
-            </NavLink>
+            {isAuthenticated && (
+              <>
+                <NavLink
+                  to="/analyze"
+                  className={({ isActive }) =>
+                    `px-4 py-2 text-sm font-medium transition-all duration-300 relative group ${
+                      isActive
+                        ? 'text-violet-400'
+                        : 'text-slate-300 hover:text-slate-100'
+                    }`
+                  }
+                >
+                  Analyze
+                  <span className="absolute bottom-0 left-0 w-0 group-hover:w-full h-0.5 bg-gradient-to-r from-violet-500 to-purple-500 transition-all duration-300"></span>
+                </NavLink>
 
-            <NavLink
-              to="/history"
-              className={({ isActive }) =>
-                `px-4 py-2 text-sm font-medium transition-all duration-300 relative group ${
-                  isActive
-                    ? 'text-violet-400'
-                    : 'text-slate-300 hover:text-slate-100'
-                }`
-              }
-            >
-              History
-              <span className="absolute bottom-0 left-0 w-0 group-hover:w-full h-0.5 bg-gradient-to-r from-violet-500 to-purple-500 transition-all duration-300"></span>
-            </NavLink>
+                <NavLink
+                  to="/history"
+                  className={({ isActive }) =>
+                    `px-4 py-2 text-sm font-medium transition-all duration-300 relative group ${
+                      isActive
+                        ? 'text-violet-400'
+                        : 'text-slate-300 hover:text-slate-100'
+                    }`
+                  }
+                >
+                  History
+                  <span className="absolute bottom-0 left-0 w-0 group-hover:w-full h-0.5 bg-gradient-to-r from-violet-500 to-purple-500 transition-all duration-300"></span>
+                </NavLink>
 
-            <NavLink
-              to="/support"
-              className={({ isActive }) =>
-                `px-4 py-2 text-sm font-medium transition-all duration-300 relative group ${
-                  isActive
-                    ? 'text-violet-400'
-                    : 'text-slate-300 hover:text-slate-100'
-                }`
-              }
-            >
-              Support
-              <span className="absolute bottom-0 left-0 w-0 group-hover:w-full h-0.5 bg-gradient-to-r from-violet-500 to-purple-500 transition-all duration-300"></span>
-            </NavLink>
+                <NavLink
+                  to="/support"
+                  className={({ isActive }) =>
+                    `px-4 py-2 text-sm font-medium transition-all duration-300 relative group ${
+                      isActive
+                        ? 'text-violet-400'
+                        : 'text-slate-300 hover:text-slate-100'
+                    }`
+                  }
+                >
+                  Support
+                  <span className="absolute bottom-0 left-0 w-0 group-hover:w-full h-0.5 bg-gradient-to-r from-violet-500 to-purple-500 transition-all duration-300"></span>
+                </NavLink>
+              </>
+            )}
+          </div>
+
+          {/* Auth Buttons / User Info */}
+          <div className="hidden md:flex items-center space-x-3">
+            {isAuthenticated ? (
+              <>
+                <span className="text-sm text-slate-300">
+                  Welcome, <span className="text-violet-400 font-medium">{user?.username}</span>
+                </span>
+                <button
+                  onClick={handleLogout}
+                  className="px-4 py-2 text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 rounded-lg transition-all duration-300"
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <>
+                <NavLink
+                  to="/login"
+                  className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-violet-400 transition-colors"
+                >
+                  Login
+                </NavLink>
+                <NavLink
+                  to="/signup"
+                  className="px-4 py-2 text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 rounded-lg transition-all duration-300"
+                >
+                  Sign Up
+                </NavLink>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -117,47 +162,77 @@ export default function Navbar() {
               Home
             </NavLink>
 
-            <NavLink
-              to="/analyze"
-              onClick={closeMenu}
-              className={({ isActive }) =>
-                `block px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300 ${
-                  isActive
-                    ? 'bg-violet-500/20 text-violet-400 border border-violet-500/50'
-                    : 'text-slate-300 hover:bg-slate-800/50'
-                }`
-              }
-            >
-              Analyze
-            </NavLink>
+            {isAuthenticated && (
+              <>
+                <NavLink
+                  to="/analyze"
+                  onClick={closeMenu}
+                  className={({ isActive }) =>
+                    `block px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300 ${
+                      isActive
+                        ? 'bg-violet-500/20 text-violet-400 border border-violet-500/50'
+                        : 'text-slate-300 hover:bg-slate-800/50'
+                    }`
+                  }
+                >
+                  Analyze
+                </NavLink>
 
-            <NavLink
-              to="/history"
-              onClick={closeMenu}
-              className={({ isActive }) =>
-                `block px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300 ${
-                  isActive
-                    ? 'bg-violet-500/20 text-violet-400 border border-violet-500/50'
-                    : 'text-slate-300 hover:bg-slate-800/50'
-                }`
-              }
-            >
-              History
-            </NavLink>
+                <NavLink
+                  to="/history"
+                  onClick={closeMenu}
+                  className={({ isActive }) =>
+                    `block px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300 ${
+                      isActive
+                        ? 'bg-violet-500/20 text-violet-400 border border-violet-500/50'
+                        : 'text-slate-300 hover:bg-slate-800/50'
+                    }`
+                  }
+                >
+                  History
+                </NavLink>
 
-            <NavLink
-              to="/support"
-              onClick={closeMenu}
-              className={({ isActive }) =>
-                `block px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300 ${
-                  isActive
-                    ? 'bg-violet-500/20 text-violet-400 border border-violet-500/50'
-                    : 'text-slate-300 hover:bg-slate-800/50'
-                }`
-              }
-            >
-              Support
-            </NavLink>
+                <NavLink
+                  to="/support"
+                  onClick={closeMenu}
+                  className={({ isActive }) =>
+                    `block px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300 ${
+                      isActive
+                        ? 'bg-violet-500/20 text-violet-400 border border-violet-500/50'
+                        : 'text-slate-300 hover:bg-slate-800/50'
+                    }`
+                  }
+                >
+                  Support
+                </NavLink>
+              </>
+            )}
+
+            {isAuthenticated ? (
+              <button
+                onClick={handleLogout}
+                className="w-full px-4 py-2 text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 rounded-lg transition-all duration-300"
+              >
+                Logout
+              </button>
+            ) : (
+              <>
+                <NavLink
+                  to="/login"
+                  onClick={closeMenu}
+                  className="block px-4 py-2 text-sm font-medium text-slate-300 hover:text-violet-400 transition-colors"
+                >
+                  Login
+                </NavLink>
+                <NavLink
+                  to="/signup"
+                  onClick={closeMenu}
+                  className="block px-4 py-2 text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 rounded-lg transition-all duration-300 text-center"
+                >
+                  Sign Up
+                </NavLink>
+              </>
+            )}
           </div>
         )}
       </div>

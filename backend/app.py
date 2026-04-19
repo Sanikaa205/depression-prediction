@@ -9,6 +9,8 @@ Endpoints:
     POST /analyze             - Analyze text and predict severity
     GET  /history             - Get all analysis history
     GET  /latest-result       - Get most recent analysis
+    POST /auth/signup         - Register new user
+    POST /auth/login          - User login
     
 Documentation:
     Swagger UI: http://localhost:8000/docs
@@ -28,6 +30,7 @@ from fastapi.responses import JSONResponse
 from model_loader import initialize_model, get_model
 from predictor import predict
 from database import init_db, save_analysis, get_all_analyses, get_latest_analysis
+from auth import init_auth_db, close_auth_db, register_user, login_user
 from schema import (
     AnalyzeRequest,
     AnalyzeResponse,
@@ -35,6 +38,10 @@ from schema import (
     LatestResult,
     HealthResponse,
     ErrorResponse,
+    SignupRequest,
+    LoginRequest,
+    AuthResponse,
+    UserResponse,
 )
 
 # Configure logging
@@ -63,8 +70,13 @@ async def lifespan(app: FastAPI):
         logger.info("Depression Severity Prediction API - Startup Sequence")
         logger.info("=" * 70)
         
-        # Initialize database
-        logger.info("📦 Initializing database...")
+        # Initialize MongoDB for authentication
+        logger.info("📦 Initializing MongoDB for user authentication...")
+        await init_auth_db()
+        logger.info("✓ MongoDB initialized successfully")
+        
+        # Initialize SQLite database
+        logger.info("📦 Initializing SQLite database...")
         await init_db()
         startup_complete["database"] = True
         logger.info("✓ Database initialized successfully")
@@ -92,6 +104,7 @@ async def lifespan(app: FastAPI):
     
     # ================= SHUTDOWN =================
     logger.info("🛑 API Shutdown")
+    await close_auth_db()
 
 
 # Create FastAPI app with lifespan
@@ -422,8 +435,112 @@ async def root():
             "analyze": "/analyze (POST)",
             "history": "/history",
             "latest": "/latest-result",
+            "auth": {
+                "signup": "/auth/signup (POST)",
+                "login": "/auth/login (POST)"
+            }
         },
     }
+
+
+# ===================== AUTHENTICATION ENDPOINTS =====================
+@app.post(
+    "/auth/signup",
+    response_model=AuthResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["Authentication"],
+    summary="Register New User",
+    description="Create a new user account",
+)
+async def signup(request: SignupRequest) -> AuthResponse:
+    """
+    Register a new user.
+    
+    Args:
+        request (SignupRequest): Username, email, and password
+        
+    Returns:
+        AuthResponse: User data (no password)
+        
+    Raises:
+        HTTPException: 400 if username exists, 422 on validation error
+    """
+    try:
+        logger.info(f"📝 New signup attempt for username: {request.username}")
+        
+        user = await register_user(
+            username=request.username,
+            email=request.email,
+            password=request.password,
+        )
+        
+        logger.info(f"✓ User registered: {request.username}")
+        return AuthResponse(
+            user=UserResponse(**user),
+            message="Registration successful"
+        )
+    
+    except ValueError as e:
+        logger.warning(f"❌ Registration failed: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    except Exception as e:
+        logger.error(f"❌ Signup error: {type(e).__name__}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Registration failed: {str(e)}",
+        )
+
+
+@app.post(
+    "/auth/login",
+    response_model=AuthResponse,
+    status_code=status.HTTP_200_OK,
+    tags=["Authentication"],
+    summary="User Login",
+    description="Authenticate user with username and password",
+)
+async def login(request: LoginRequest) -> AuthResponse:
+    """
+    Authenticate a user.
+    
+    Args:
+        request (LoginRequest): Username and password
+        
+    Returns:
+        AuthResponse: User data (no password, no token)
+        
+    Raises:
+        HTTPException: 401 if credentials invalid
+    """
+    try:
+        logger.info(f"🔐 Login attempt for username: {request.username}")
+        
+        user = await login_user(
+            username=request.username,
+            password=request.password,
+        )
+        
+        logger.info(f"✓ User logged in: {request.username}")
+        return AuthResponse(
+            user=UserResponse(**user),
+            message="Login successful"
+        )
+    
+    except ValueError as e:
+        logger.warning(f"❌ Login failed: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e),
+        )
+    except Exception as e:
+        logger.error(f"❌ Login error: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Login failed",
+        )
 
 
 # ===================== MAIN =====================
