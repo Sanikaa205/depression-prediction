@@ -654,7 +654,7 @@ export default function Support() {
             <div>
               <h3 className="text-lg sm:text-xl font-semibold text-white mb-3 sm:mb-4">Important Disclaimer</h3>
               <p className="text-slate-300 leading-relaxed text-xs sm:text-sm md:text-base">
-                MindSight is an AI-powered informational tool and is not a substitute for professional
+                Depression Severity Analyzer is an AI-powered informational tool and is not a substitute for professional
                 medical advice, diagnosis, or treatment. Mental health conditions are complex and require
                 professional expertise. If you're experiencing suicidal thoughts or severe depression, please
                 reach out to a mental health professional or crisis helpline immediately.
