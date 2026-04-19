@@ -29,7 +29,7 @@ from fastapi.responses import JSONResponse
 # Import our modules
 from model_loader import initialize_model, get_model
 from predictor import predict
-from database import init_db, save_analysis, get_all_analyses, get_latest_analysis
+from database import init_db, save_analysis, get_all_analyses, get_analyses_by_user, get_latest_analysis
 from auth import init_auth_db, close_auth_db, register_user, login_user
 from schema import (
     AnalyzeRequest,
@@ -238,6 +238,7 @@ async def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
             confidence_score=prediction_result["confidence_score"],
             suicidal_risk=prediction_result["suicidal_risk"],
             suggestions=prediction_result["coping_suggestions"],
+            user_id=request.user_id,
         )
         
         logger.info(f"✓ Analysis saved with ID: {analysis_id}")
@@ -286,16 +287,24 @@ async def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
         },
     },
 )
-async def get_history() -> List[HistoryItem]:
+async def get_history(user_id: Optional[str] = None) -> List[HistoryItem]:
     """
     Get analysis history.
     
+    Args:
+        user_id (Optional[str]): User ID to filter history. If provided, returns only that user's history.
+                                If not provided, returns all analyses (for backward compatibility).
+    
     Returns:
-        List[HistoryItem]: All analyses ordered by creation date (newest first)
+        List[HistoryItem]: Analyses ordered by creation date (newest first)
     """
     try:
-        logger.info("📚 Fetching analysis history...")
-        analyses = await get_all_analyses()
+        if user_id:
+            logger.info(f"📚 Fetching analysis history for user: {user_id}")
+            analyses = await get_analyses_by_user(user_id)
+        else:
+            logger.info("📚 Fetching all analysis history...")
+            analyses = await get_all_analyses()
         
         # Convert to HistoryItem format
         history_items = [

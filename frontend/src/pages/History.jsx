@@ -1,24 +1,38 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import axiosClient from '../api/axiosClient';
 import SeverityBadge from '../components/SeverityBadge';
+import { useAuth } from '../context/AuthContext';
 
 export default function History() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
     fetchHistory();
-  }, []);
+  }, [user, navigate]);
 
   const fetchHistory = async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await axiosClient.get('/history');
-      setHistory(response.data || []);
+      console.log('📚 Fetching history for user:', user);
+      const url = `/history?user_id=${user.id}`;
+      console.log('📚 API URL:', url);
+      const data = await axiosClient.get(url);
+      console.log('✓ History response (after interceptor):', data);
+      console.log('✓ Type of response:', typeof data);
+      console.log('✓ Is array?', Array.isArray(data));
+      setHistory(Array.isArray(data) ? data : []);
     } catch (err) {
+      console.error('❌ History error:', err);
       setError('Failed to load history. Please try again.');
       setHistory([]);
     } finally {
@@ -168,8 +182,7 @@ export default function History() {
                     <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-semibold text-slate-200">Text</th>
                     <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-semibold text-slate-200">Severity</th>
                     <th className="px-3 sm:px-6 py-3 sm:py-4 text-center text-xs sm:text-sm font-semibold text-slate-200">Risk</th>
-                    <th className="px-3 sm:px-6 py-3 sm:py-4 text-center text-xs sm:text-sm font-semibold text-slate-200">Conf</th>
-                    <th className="px-3 sm:px-6 py-3 sm:py-4 text-center text-xs sm:text-sm font-semibold text-slate-200">Sui</th>
+                    <th className="px-3 sm:px-6 py-3 sm:py-4 text-center text-xs sm:text-sm font-semibold text-slate-200">Confidence</th>
                   </tr>
                 </thead>
 
@@ -219,11 +232,6 @@ export default function History() {
                         <span className="inline-block px-2 sm:px-3 py-1 rounded-full font-semibold text-xs text-violet-400 bg-violet-500/20">
                           {item.confidence_score.toFixed(0)}%
                         </span>
-                      </td>
-
-                      {/* Suicidal Risk */}
-                      <td className="px-3 sm:px-6 py-2 sm:py-4 text-sm sm:text-lg text-center">
-                        {item.suicidal_risk ? '⚠' : '✓'}
                       </td>
                     </tr>
                   ))}

@@ -16,6 +16,7 @@ class AnalyzeRequest(BaseModel):
     Attributes:
         text (str): Input text for depression severity analysis
                    Must be at least 10 characters
+        user_id (Optional[str]): MongoDB user ID for tracking user-specific history
     """
     text: str = Field(
         ...,
@@ -24,11 +25,16 @@ class AnalyzeRequest(BaseModel):
         description="Text to analyze for depression severity (10-10000 chars)",
         example="I've been feeling really depressed and hopeless lately, unable to find joy in anything"
     )
+    user_id: Optional[str] = Field(
+        None,
+        description="User ID for tracking history"
+    )
     
     class Config:
         json_schema_extra = {
             "example": {
-                "text": "I've been feeling really down and having trouble sleeping"
+                "text": "I've been feeling really down and having trouble sleeping",
+                "user_id": "507f1f77bcf86cd799439011"
             }
         }
 
