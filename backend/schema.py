@@ -158,6 +158,7 @@ class LatestResult(BaseModel):
     risk_score: float = Field(..., description="Risk score (0-100)", example=65.43)
     confidence_score: float = Field(..., description="Confidence score (0-100)", example=89.12)
     created_at: str = Field(..., description="ISO timestamp")
+    coping_suggestions: List[str] = Field(..., description="Personalized coping suggestions", example=["✓ Consider counseling", "✓ Practice meditation"])
     
     class Config:
         json_schema_extra = {
@@ -166,7 +167,8 @@ class LatestResult(BaseModel):
                 "severity": "Moderate",
                 "risk_score": 65.43,
                 "confidence_score": 89.12,
-                "created_at": "2026-04-04T15:30:22"
+                "created_at": "2026-04-04T15:30:22",
+                "coping_suggestions": ["✓ Consider counseling", "✓ Practice meditation"]
             }
         }
 

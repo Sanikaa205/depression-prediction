@@ -373,6 +373,7 @@ async def get_latest() -> LatestResult:
             risk_score=latest["risk_score"],
             confidence_score=latest["confidence_score"],
             created_at=latest["created_at"],
+            coping_suggestions=latest.get("suggestions", []),
         )
         
         logger.info(f"✓ Retrieved latest result: ID {result.id}")
