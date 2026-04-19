@@ -29,7 +29,6 @@ from fastapi.responses import JSONResponse
 # Import our modules
 from model_loader import initialize_model, get_model
 from predictor import predict
-from database import init_db, get_latest_analysis  # Keep SQLite only for legacy support
 from history import init_history_db, close_history_db, save_analysis, get_analyses_by_user, get_all_analyses
 from auth import init_auth_db, close_auth_db, register_user, login_user
 from schema import (
@@ -86,12 +85,7 @@ async def lifespan(app: FastAPI):
         logger.info("📦 Initializing MongoDB for history storage...")
         await init_history_db(mongo_url)
         logger.info("✓ History database initialized successfully")
-        
-        # Initialize SQLite database (legacy support)
-        logger.info("📦 Initializing SQLite database...")
-        await init_db()
         startup_complete["database"] = True
-        logger.info("✓ Database initialized successfully")
         
         # Load ML model
         logger.info("🧠 Loading ML model...")
@@ -380,14 +374,16 @@ async def get_latest() -> LatestResult:
     """
     try:
         logger.info("📊 Fetching latest analysis...")
-        latest = await get_latest_analysis()
+        all_analyses = await get_all_analyses()
         
-        if not latest:
+        if not all_analyses:
             logger.warning("No analyses found in database")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="No analyses available",
             )
+        
+        latest = all_analyses[0]  # First item is newest (ordered DESC by created_at)
         
         result = LatestResult(
             id=latest["id"],
