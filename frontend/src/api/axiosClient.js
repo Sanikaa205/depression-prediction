@@ -24,11 +24,15 @@ const axiosClient = axios.create({
  */
 axiosClient.interceptors.response.use(
   (response) => {
+    // Log full response for debugging
+    console.log('🔵 Full Axios Response:', response);
+    console.log('🔵 Response Data:', response.data);
     // Return response data directly for cleaner usage
-    return response.data
+    return response.data;
   },
   (error) => {
     // Log error details for debugging
+    console.error('🔴 Axios Error:', error);
     if (error.response) {
       // Server responded with error status
       console.error('API Error:', {

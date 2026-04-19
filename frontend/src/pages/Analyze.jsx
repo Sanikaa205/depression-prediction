@@ -4,8 +4,10 @@ import axiosClient from '../api/axiosClient';
 import SeverityBadge from '../components/SeverityBadge';
 import RiskMeter from '../components/RiskMeter';
 import SuicidalAlert from '../components/SuicidalAlert';
+import { useAuth } from '../context/AuthContext';
 
 export default function Analyze() {
+  const { user } = useAuth();
   const [text, setText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState(null);
@@ -26,7 +28,10 @@ export default function Analyze() {
     setResult(null);
 
     try {
-      const response = await axiosClient.post('/analyze', { text });
+      const response = await axiosClient.post('/analyze', { 
+        text,
+        user_id: user?.id
+      });
       setResult(response);
     } catch (err) {
       const errorMessage =

@@ -29,7 +29,7 @@ from fastapi.responses import JSONResponse
 # Import our modules
 from model_loader import initialize_model, get_model
 from predictor import predict
-from database import init_db, save_analysis, get_all_analyses, get_latest_analysis
+from history import init_history_db, close_history_db, save_analysis, get_analyses_by_user, get_all_analyses
 from auth import init_auth_db, close_auth_db, register_user, login_user
 from schema import (
     AnalyzeRequest,
@@ -70,16 +70,22 @@ async def lifespan(app: FastAPI):
         logger.info("Depression Severity Prediction API - Startup Sequence")
         logger.info("=" * 70)
         
+        # Get MongoDB URL from environment
+        import os
+        from dotenv import load_dotenv
+        load_dotenv()
+        mongo_url = os.getenv("MONGO_URL")
+        
         # Initialize MongoDB for authentication
         logger.info("📦 Initializing MongoDB for user authentication...")
         await init_auth_db()
         logger.info("✓ MongoDB initialized successfully")
         
-        # Initialize SQLite database
-        logger.info("📦 Initializing SQLite database...")
-        await init_db()
+        # Initialize MongoDB for history storage
+        logger.info("📦 Initializing MongoDB for history storage...")
+        await init_history_db(mongo_url)
+        logger.info("✓ History database initialized successfully")
         startup_complete["database"] = True
-        logger.info("✓ Database initialized successfully")
         
         # Load ML model
         logger.info("🧠 Loading ML model...")
@@ -105,6 +111,7 @@ async def lifespan(app: FastAPI):
     # ================= SHUTDOWN =================
     logger.info("🛑 API Shutdown")
     await close_auth_db()
+    await close_history_db()
 
 
 # Create FastAPI app with lifespan
@@ -238,6 +245,7 @@ async def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
             confidence_score=prediction_result["confidence_score"],
             suicidal_risk=prediction_result["suicidal_risk"],
             suggestions=prediction_result["coping_suggestions"],
+            user_id=request.user_id,
         )
         
         logger.info(f"✓ Analysis saved with ID: {analysis_id}")
@@ -286,16 +294,24 @@ async def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
         },
     },
 )
-async def get_history() -> List[HistoryItem]:
+async def get_history(user_id: Optional[str] = None) -> List[HistoryItem]:
     """
     Get analysis history.
     
+    Args:
+        user_id (Optional[str]): User ID to filter history. If provided, returns only that user's history.
+                                If not provided, returns all analyses (for backward compatibility).
+    
     Returns:
-        List[HistoryItem]: All analyses ordered by creation date (newest first)
+        List[HistoryItem]: Analyses ordered by creation date (newest first)
     """
     try:
-        logger.info("📚 Fetching analysis history...")
-        analyses = await get_all_analyses()
+        if user_id:
+            logger.info(f"📚 Fetching analysis history for user: {user_id}")
+            analyses = await get_analyses_by_user(user_id)
+        else:
+            logger.info("📚 Fetching all analysis history...")
+            analyses = await get_all_analyses()
         
         # Convert to HistoryItem format
         history_items = [
@@ -358,14 +374,16 @@ async def get_latest() -> LatestResult:
     """
     try:
         logger.info("📊 Fetching latest analysis...")
-        latest = await get_latest_analysis()
+        all_analyses = await get_all_analyses()
         
-        if not latest:
+        if not all_analyses:
             logger.warning("No analyses found in database")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="No analyses available",
             )
+        
+        latest = all_analyses[0]  # First item is newest (ordered DESC by created_at)
         
         result = LatestResult(
             id=latest["id"],

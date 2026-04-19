@@ -34,11 +34,12 @@ async def init_db() -> None:
     """
     try:
         async with aiosqlite.connect(DATABASE_URL) as db:
-            # Create analyses table
+            # Create analyses table with user_id column
             await db.execute(
                 """
                 CREATE TABLE IF NOT EXISTS analyses (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT,
                     text TEXT NOT NULL,
                     severity TEXT NOT NULL,
                     risk_score REAL,
@@ -49,6 +50,19 @@ async def init_db() -> None:
                 )
                 """
             )
+            
+            # Try to add user_id column if it doesn't exist (migration for existing databases)
+            try:
+                cursor = await db.execute("PRAGMA table_info(analyses)")
+                columns = await cursor.fetchall()
+                column_names = [col[1] for col in columns]
+                
+                if 'user_id' not in column_names:
+                    logger.info("Adding user_id column to analyses table")
+                    await db.execute("ALTER TABLE analyses ADD COLUMN user_id TEXT")
+            except aiosqlite.Error:
+                # Column might already exist, continue
+                pass
             
             # Create index on created_at for faster queries
             await db.execute(
@@ -76,6 +90,7 @@ async def save_analysis(
     confidence_score: float,
     suicidal_risk: bool,
     suggestions: List[str],
+    user_id: Optional[str] = None,
 ) -> int:
     """
     Save a depression severity analysis record to the database.
@@ -118,16 +133,16 @@ async def save_analysis(
         # Convert suggestions list to JSON string
         suggestions_json = json.dumps(suggestions)
         
-        logger.debug(f"Saving analysis: severity={severity}, risk_score={risk_score}")
+        logger.debug(f"Saving analysis: severity={severity}, risk_score={risk_score}, user_id={user_id}")
         
         async with aiosqlite.connect(DATABASE_URL) as db:
             cursor = await db.execute(
                 """
                 INSERT INTO analyses 
-                (text, severity, risk_score, confidence_score, suicidal_risk, suggestions)
-                VALUES (?, ?, ?, ?, ?, ?)
+                (user_id, text, severity, risk_score, confidence_score, suicidal_risk, suggestions)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                (text, severity, risk_score, confidence_score, suicidal_risk_int, suggestions_json),
+                (user_id, text, severity, risk_score, confidence_score, suicidal_risk_int, suggestions_json),
             )
             
             await db.commit()
@@ -224,6 +239,91 @@ async def get_all_analyses() -> List[Dict[str, Any]]:
         raise
     except Exception as e:
         logger.error(f"Unexpected error during fetch all: {str(e)}")
+        raise
+
+
+async def get_analyses_by_user(user_id: str) -> List[Dict[str, Any]]:
+    """
+    Fetch depression severity analysis records for a specific user.
+    
+    This function:
+    1. Queries all rows from analyses table where user_id matches EXACTLY
+    2. Orders by created_at DESC (newest first)
+    3. Converts JSON suggestions back to Python lists
+    4. Converts suicidal_risk integer (0/1) to boolean
+    5. Returns list of dictionaries
+    
+    Args:
+        user_id (str): MongoDB user ID to filter by
+    
+    Returns:
+        List[Dict]: List of analysis records for ONLY that user, each with keys:
+            - id (int): Record ID
+            - user_id (str): User ID
+            - text (str): Analyzed text
+            - severity (str): Predicted severity
+            - risk_score (float): Risk score
+            - confidence_score (float): Confidence
+            - suicidal_risk (bool): Suicidal risk flag
+            - suggestions (List[str]): Coping suggestions
+            - created_at (str): Timestamp
+        
+        Returns empty list if no records exist for this user.
+        
+    Raises:
+        aiosqlite.Error: If database query fails
+    """
+    try:
+        logger.debug(f"Fetching analyses for user: {user_id}")
+        
+        async with aiosqlite.connect(DATABASE_URL) as db:
+            # Enable row factory to get rows as dictionaries
+            db.row_factory = aiosqlite.Row
+            
+            cursor = await db.execute(
+                """
+                SELECT id, user_id, text, severity, risk_score, confidence_score, 
+                       suicidal_risk, suggestions, created_at
+                FROM analyses
+                WHERE user_id = ?
+                ORDER BY created_at DESC
+                """,
+                (user_id,)
+            )
+            
+            rows = await cursor.fetchall()
+            
+            if not rows:
+                logger.info(f"No analyses found for user: {user_id}")
+                return []
+            
+            # Convert rows to list of dicts and parse JSON suggestions
+            analyses = []
+            for row in rows:
+                analysis = {
+                    "id": row["id"],
+                    "user_id": row["user_id"],
+                    "text": row["text"],
+                    "severity": row["severity"],
+                    "risk_score": row["risk_score"],
+                    "confidence_score": row["confidence_score"],
+                    "suicidal_risk": bool(row["suicidal_risk"]),  # Convert 0/1 to bool
+                    "suggestions": json.loads(row["suggestions"]) if row["suggestions"] else [],
+                    "created_at": row["created_at"],
+                }
+                analyses.append(analysis)
+            
+            logger.info(f"Retrieved {len(analyses)} analyses for user: {user_id}")
+            return analyses
+    
+    except aiosqlite.Error as e:
+        logger.error(f"Database error during fetch user analyses: {str(e)}")
+        raise
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON decode error: {str(e)}")
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error during fetch user analyses: {str(e)}")
         raise
 
 
