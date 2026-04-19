@@ -29,7 +29,8 @@ from fastapi.responses import JSONResponse
 # Import our modules
 from model_loader import initialize_model, get_model
 from predictor import predict
-from database import init_db, save_analysis, get_all_analyses, get_analyses_by_user, get_latest_analysis
+from database import init_db, get_latest_analysis  # Keep SQLite only for legacy support
+from history import init_history_db, close_history_db, save_analysis, get_analyses_by_user, get_all_analyses
 from auth import init_auth_db, close_auth_db, register_user, login_user
 from schema import (
     AnalyzeRequest,
@@ -70,12 +71,23 @@ async def lifespan(app: FastAPI):
         logger.info("Depression Severity Prediction API - Startup Sequence")
         logger.info("=" * 70)
         
+        # Get MongoDB URL from environment
+        import os
+        from dotenv import load_dotenv
+        load_dotenv()
+        mongo_url = os.getenv("MONGO_URL")
+        
         # Initialize MongoDB for authentication
         logger.info("📦 Initializing MongoDB for user authentication...")
         await init_auth_db()
         logger.info("✓ MongoDB initialized successfully")
         
-        # Initialize SQLite database
+        # Initialize MongoDB for history storage
+        logger.info("📦 Initializing MongoDB for history storage...")
+        await init_history_db(mongo_url)
+        logger.info("✓ History database initialized successfully")
+        
+        # Initialize SQLite database (legacy support)
         logger.info("📦 Initializing SQLite database...")
         await init_db()
         startup_complete["database"] = True
@@ -105,6 +117,7 @@ async def lifespan(app: FastAPI):
     # ================= SHUTDOWN =================
     logger.info("🛑 API Shutdown")
     await close_auth_db()
+    await close_history_db()
 
 
 # Create FastAPI app with lifespan
