@@ -3,11 +3,11 @@ fastapi==0.104.1
 uvicorn[standard]==0.24.0
 
 # PyTorch & Deep Learning
-# CPU-only version - install from PyTorch index
-torch==2.7.1
+# CPU-only version - using latest available version for compatibility
+torch==2.11.0
 
 # Model & NLP
-transformers==4.36.2
+transformers==4.40.0
 safetensors==0.4.1
 
 # Data Validation
