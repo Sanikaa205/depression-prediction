@@ -73,11 +73,13 @@ def initialize_model() -> bool:
         )
         logger.info("✓ Tokenizer loaded")
 
-        # ✅ Load model (LOCAL)
+        # ✅ Load model (LOCAL) — float16 halves RAM usage (~240MB vs ~475MB)
         logger.info("Loading model...")
         MODEL = AutoModelForSequenceClassification.from_pretrained(
             MODEL_DIR,
-            local_files_only=True
+            local_files_only=True,
+            torch_dtype=torch.float16,
+            low_cpu_mem_usage=True,
         )
         logger.info("✓ Model loaded")
 
