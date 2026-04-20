@@ -21,6 +21,11 @@ import logging
 import uvicorn
 from contextlib import asynccontextmanager
 from typing import List, Optional
+import os
+from dotenv import load_dotenv
+
+load_dotenv()  # Load .env file
+YOUTUBE_API_KEY = os.getenv('YOUTUBE_API_KEY')
 
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -77,14 +82,11 @@ async def lifespan(app: FastAPI):
         mongo_url = os.getenv("MONGO_URL")
         
         # Initialize MongoDB for authentication
-        logger.info("📦 Initializing MongoDB for user authentication...")
         await init_auth_db()
-        logger.info("✓ MongoDB initialized successfully")
+        startup_complete["database"] = True
         
         # Initialize MongoDB for history storage
-        logger.info("📦 Initializing MongoDB for history storage...")
         await init_history_db(mongo_url)
-        logger.info("✓ History database initialized successfully")
         startup_complete["database"] = True
         
         # Load ML model
@@ -125,16 +127,21 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Add CORS middleware for development
+# Configure CORS with environment-based origin restrictions
+ALLOWED_ORIGINS = os.getenv(
+    "ALLOWED_ORIGINS",
+    "http://localhost:3000,http://localhost:8000,http://127.0.0.1:3000,http://127.0.0.1:8000"
+).split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins (for development)
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],  # Allow all HTTP methods
-    allow_headers=["*"],  # Allow all headers
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
 )
 
-logger.info("CORSMiddleware configured: allowing all origins")
+logger.info(f"CORSMiddleware configured with origins: {ALLOWED_ORIGINS}")
 
 
 # ===================== HEALTH CHECK ENDPOINT =====================
@@ -564,13 +571,20 @@ async def login(request: LoginRequest) -> AuthResponse:
 
 # ===================== MAIN =====================
 if __name__ == "__main__":
+    # Use PORT from environment (Render sets this) or default to 8000 for local development
+    port = int(os.environ.get("PORT", 8000))
+    
+    # Disable auto-reload in production, enable only in development
+    env = os.environ.get("ENV", "development")
+    reload = env != "production"
+    
     logger.info("Starting Depression Severity Prediction API...")
-    logger.info("🌐 Server will be available at http://0.0.0.0:8000")
+    logger.info(f"🌐 Server will be available at http://0.0.0.0:{port}")
     
     uvicorn.run(
         "app:app",
         host="0.0.0.0",
-        port=8000,
-        reload=True,
+        port=port,
+        reload=reload,
         log_level="info",
     )

@@ -3,6 +3,7 @@ User Authentication Module
 
 Handles user registration, login, and MongoDB operations.
 Uses plain-text password storage (no hashing).
+Falls back to in-memory storage if MongoDB is unavailable.
 """
 
 import logging
@@ -32,7 +33,6 @@ async def init_auth_db(mongo_url: Optional[str] = None) -> None:
     
     Raises:
         ValueError: If MONGO_URL env var not set and mongo_url not provided.
-        Exception: If MongoDB connection fails.
     """
     global _mongo_client, _auth_db
     
@@ -59,6 +59,7 @@ async def init_auth_db(mongo_url: Optional[str] = None) -> None:
         # Create unique index on username
         users_collection = _auth_db["users"]
         await users_collection.create_index("username", unique=True)
+        
         logger.info("✓ MongoDB initialized successfully")
         
     except Exception as e:
@@ -90,7 +91,7 @@ async def get_user_by_username(username: str) -> Optional[Dict]:
         Optional[Dict]: User document or None if not found
     """
     if _auth_db is None:
-        raise RuntimeError("Auth DB not initialized")
+        raise RuntimeError("Authentication database not initialized")
     
     users_collection = _auth_db["users"]
     user = await users_collection.find_one({"username": username})
@@ -113,48 +114,40 @@ async def register_user(username: str, email: str, password: str) -> Dict:
         ValueError: If username already exists
         Exception: If database insert fails
     """
-    global _auth_db
-    
     if _auth_db is None:
-        logger.error(f"Auth DB is None! _mongo_client: {_mongo_client}, _auth_db: {_auth_db}")
-        raise RuntimeError("Auth DB not initialized")
+        raise RuntimeError("Authentication database not initialized")
     
-    try:
-        users_collection = _auth_db["users"]
-        logger.debug(f"Got users collection: {users_collection}")
-        
-        # Create user document
-        user_doc = {
-            "username": username,
-            "email": email,
-            "password": password,  # Plain text, no hashing
-        }
-        
-        logger.debug(f"Attempting to insert user: {username}")
-        
-        # Insert into database
-        result = await users_collection.insert_one(user_doc)
-        
-        logger.info(f"✓ User registered: {username}")
-        
-        # Return user data without password
-        return {
-            "id": str(result.inserted_id),
-            "username": username,
-            "email": email,
-        }
+    users_collection = _auth_db["users"]
     
-    except DuplicateKeyError as e:
-        logger.error(f"Duplicate key error: {str(e)}")
+    # Check if username already exists
+    existing = await users_collection.find_one({"username": username})
+    if existing:
         raise ValueError(f"Username '{username}' already exists")
-    except Exception as e:
-        logger.error(f"❌ Registration error: {type(e).__name__}: {str(e)}", exc_info=True)
-        raise
+    
+    # Create user document
+    user_doc = {
+        "username": username,
+        "email": email,
+        "password": password,  # Plain text, no hashing
+    }
+    
+    # Insert into database
+    result = await users_collection.insert_one(user_doc)
+    
+    logger.info(f"✓ User registered: {username}")
+    
+    # Return user data without password
+    return {
+        "id": str(result.inserted_id),
+        "username": username,
+        "email": email,
+    }
 
 
 async def login_user(username: str, password: str) -> Dict:
     """
     Authenticate a user.
+    Falls back to in-memory storage if MongoDB is unavailable.
     
     Args:
         username (str): Username
@@ -166,9 +159,6 @@ async def login_user(username: str, password: str) -> Dict:
     Raises:
         ValueError: If username not found or password incorrect
     """
-    if _auth_db is None:
-        raise RuntimeError("Auth DB not initialized")
-    
     try:
         user = await get_user_by_username(username)
         

@@ -8,6 +8,7 @@ Each analysis record is linked to a user via user_id.
 import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+import certifi
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from pymongo import DESCENDING
 
@@ -26,9 +27,9 @@ async def init_history_db(mongo_url: str) -> None:
     """
     global _history_db
     
+    logger.info("📦 Initializing MongoDB for history storage...")
+    
     try:
-        logger.info("📦 Initializing MongoDB for history storage...")
-        
         client = AsyncIOMotorClient(mongo_url)
         _history_db = client["depression_predictor"]
         
@@ -39,7 +40,6 @@ async def init_history_db(mongo_url: str) -> None:
         await analyses_collection.create_index("user_id")
         await analyses_collection.create_index([("created_at", DESCENDING)])
         await analyses_collection.create_index([("user_id", 1), ("created_at", -1)])
-        
         logger.info("✓ MongoDB history database initialized successfully")
         
     except Exception as e:

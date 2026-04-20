@@ -7,8 +7,11 @@
 
 import axios from "axios";
 
+// Use environment variable for API URL, fallback to localhost for development
+const baseURL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+
 const axiosClient = axios.create({
-  baseURL: "http://127.0.0.1:8000",
+  baseURL: baseURL,
   headers: {
     "Content-Type": "application/json",
   },
