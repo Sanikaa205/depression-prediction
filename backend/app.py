@@ -128,10 +128,13 @@ app = FastAPI(
 )
 
 # Configure CORS with environment-based origin restrictions
-ALLOWED_ORIGINS = os.getenv(
+origins_str = os.getenv(
     "ALLOWED_ORIGINS",
-    "http://localhost:3000,http://localhost:8000,http://127.0.0.1:3000,http://127.0.0.1:8000"
-).split(",")
+    "http://localhost:3000,http://localhost:5173,http://localhost:5174,http://localhost:8000,http://127.0.0.1:3000,http://127.0.0.1:5173,http://127.0.0.1:5174,http://127.0.0.1:8000"
+)
+
+# If "*" (allow all), use it directly; otherwise split the comma-separated list
+ALLOWED_ORIGINS = ["*"] if origins_str.strip() == "*" else [origin.strip() for origin in origins_str.split(",")]
 
 app.add_middleware(
     CORSMiddleware,
